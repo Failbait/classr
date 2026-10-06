@@ -1,6 +1,7 @@
 """People counter MVP: count visible people and log the count periodically."""
 
 import argparse
+import os
 import signal
 import time
 
@@ -29,11 +30,20 @@ def draw_overlay(cv2, frame, boxes, fps):
     return annotated
 
 
+def has_display():
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def run(show_preview):
     # Imported here so --help works on machines without the Pi stack.
     import cv2
     from camera import read_frame, start_camera, stop_camera
     from detector import detect_people, load_model
+
+    if show_preview and not has_display():
+        print("No display found (SSH session?); running without preview. "
+              "To show it on the Pi's screen use: DISPLAY=:0 ./run.sh")
+        show_preview = False
 
     init_csv(config.CSV_PATH)
     model = load_model()
