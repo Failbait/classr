@@ -1,0 +1,3 @@
+# Optional: only needed to benchmark/run the RF-DETR backend (MODEL_NAME = "rfdetr-small").
+-r requirements.txt
+rfdetr

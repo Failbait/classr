@@ -17,6 +17,7 @@ BASELINE = ("yolo11s.pt", 1280, 0.5)
 HARD_SCENARIOS = {"distant", "occlusion", "dense"}
 DEFAULT_MODELS = ["yolo11s.pt", "yolo26s.pt", "yolo26n.pt"]
 DEFAULT_IMGSZ = [640, 960, 1280, 1600, 1920]
+RFDETR_IMGSZ = [0, 672, 896, 1120]  # 0 = model's native size; others rounded to a valid multiple
 DEFAULT_CONFS = [0.4, 0.5, 0.6, 0.7]
 
 
@@ -66,7 +67,8 @@ def sweep(models, sizes, confs, manifest):
         except Exception as exc:
             print(f"SKIP {model_name}: {exc}", file=sys.stderr)
             continue
-        for imgsz in sizes:
+        model_sizes = sizes or (RFDETR_IMGSZ if model_name.startswith("rfdetr-") else DEFAULT_IMGSZ)
+        for imgsz in model_sizes:
             for conf in confs:
                 config.INFERENCE_IMAGE_SIZE, config.CONFIDENCE_THRESHOLD = imgsz, conf
                 rows = evaluate(detect_people, model, images, cases)
@@ -122,23 +124,21 @@ def print_verdict(entries, base):
     if base is None:
         print("\nBaseline (yolo11s @ 1280 @ 0.5) not in sweep; no verdict.")
         return
-    best26 = min((e for e in entries if e["model"].startswith("yolo26s")),
-                 key=rank_key, default=None)
-    if best26 is None:
-        print("\nNo yolo26s results; cannot compare.")
-        return
-    wins = rank_key(best26) < rank_key(base)
-    print(f"\nBest yolo26s: imgsz={best26['imgsz']} conf={best26['conf']} "
-          f"MAE={best26['summary']['mae']:.2f} exact={best26['summary']['exact']}/8")
-    print(f"Baseline:     MAE={base['summary']['mae']:.2f} exact={base['summary']['exact']}/8")
-    print("VERDICT: yolo26s " + ("BEATS" if wins else "does NOT beat") + " the yolo11s baseline.")
+    print(f"\nBaseline: MAE={base['summary']['mae']:.2f} exact={base['summary']['exact']}/8")
+    for model in sorted({e["model"] for e in entries} - {base["model"]}):
+        best = min((e for e in entries if e["model"] == model), key=rank_key)
+        verdict = "BEATS" if rank_key(best) < rank_key(base) else "does NOT beat"
+        print(f"Best {model}: imgsz={best['imgsz']} conf={best['conf']} "
+              f"MAE={best['summary']['mae']:.2f} exact={best['summary']['exact']}/8"
+              f"  -> {verdict} the baseline")
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--manifest", default=DEFAULT_MANIFEST)
     p.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
-    p.add_argument("--imgsz", nargs="+", type=int, default=DEFAULT_IMGSZ)
+    p.add_argument("--imgsz", nargs="+", type=int,
+                   help="image sizes for all models (default: per-backend lists; 0 = RF-DETR native)")
     p.add_argument("--conf", nargs="+", type=float, default=DEFAULT_CONFS)
     p.add_argument("--top", type=int, default=10)
     args = p.parse_args()

@@ -70,3 +70,10 @@ cases: distant people, partial occlusion, dense seating, standing/mixed scenes.
 **Note:** the benchmark uses synthetic/static images. Its numbers must not be presented
 as real-world classroom accuracy. Annotated benchmark images may be saved; this does not
 change the rule that live camera frames are never persisted.
+
+## RF-DETR backend (optional, for benchmarking)
+Set `MODEL_NAME = "rfdetr-small"` (or `rfdetr-nano` / `rfdetr-medium`) in `config.py`, or
+sweep it: `./sweep_benchmark.sh --models yolo11s.pt rfdetr-small --conf 0.4 0.5 0.6`.
+Install the extra dependency first: `pip install -r requirements-rfdetr.txt`.
+For RF-DETR, `INFERENCE_IMAGE_SIZE = 0` means the model's native resolution; other values
+are rounded to the nearest size the model accepts.
