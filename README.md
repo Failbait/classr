@@ -14,7 +14,7 @@ git clone <this repo> && cd classr
 ```
 `setup.sh` installs the apt packages (`python3-picamera2`, `python3-opencv`),
 creates `.venv` (with system site packages), installs `ultralytics` + `numpy`,
-downloads the `yolo11n.pt` model, and checks the camera. Needs internet once.
+downloads the `yolo11s.pt` model, and checks the camera. Needs internet once.
 
 ## Camera sanity check
 ```bash

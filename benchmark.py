@@ -55,11 +55,27 @@ def summarize(rows):
     return {
         "images": n,
         "mae": sum(r["absolute_error"] for r in rows) / n,
+        "mean_signed_error": sum(r["signed_error"] for r in rows) / n,
+        "empty_false_positives": sum(r["detected_count"] for r in rows
+                                    if r["expected_count"] == 0),
         "max_error": max(r["absolute_error"] for r in rows),
         "exact": exact,
         "exact_pct": exact / n * 100,
         "mean_ms": sum(r["inference_time_ms"] for r in rows) / n,
     }
+
+
+def measure(detect_people, model, image, case):
+    """Run the shared detector on one image; return (result row, detections)."""
+    start = time.perf_counter()
+    detections = detect_people(model, image)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    detected = len(detections)
+    row = {"filename": case["filename"], "scenario": case["scenario"],
+           "expected_count": case["expected"], "detected_count": detected,
+           "inference_time_ms": round(elapsed_ms, 1),
+           **compute_metrics(case["expected"], detected)}
+    return row, detections
 
 
 def annotate(cv2, image, detections, expected, signed):
@@ -105,15 +121,9 @@ def run(manifest_path):
         if image is None:
             raise BenchmarkError(f"Could not load image: {path}")
 
-        start = time.perf_counter()
-        detections = detect_people(model, image)
-        elapsed_ms = (time.perf_counter() - start) * 1000
-
-        detected = len(detections)
-        row = {"filename": case["filename"], "scenario": case["scenario"],
-               "expected_count": case["expected"], "detected_count": detected,
-               "inference_time_ms": round(elapsed_ms, 1),
-               **compute_metrics(case["expected"], detected)}
+        row, detections = measure(detect_people, model, image, case)
+        detected = row["detected_count"]
+        elapsed_ms = row["inference_time_ms"]
         rows.append(row)
 
         out = RESULTS_DIR / f"{path.stem}_detected.png"
@@ -131,8 +141,10 @@ def print_summary(s):
           f"imgsz={config.INFERENCE_IMAGE_SIZE})\n")
     print(f"Images tested:         {s['images']}")
     print(f"Mean absolute error:   {s['mae']:.2f} people")
+    print(f"Mean signed error:     {s['mean_signed_error']:+.2f} people (negative = undercount)")
     print(f"Maximum error:         {s['max_error']} people")
     print(f"Exact-count accuracy:  {s['exact']}/{s['images']} ({s['exact_pct']:.1f}%)")
+    print(f"Empty-room detections: {s['empty_false_positives']}")
     print(f"Mean inference time:   {s['mean_ms']:.1f} ms")
     print(f"\nResults: {RESULTS_DIR / 'results.csv'}")
 

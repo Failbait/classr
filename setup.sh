@@ -19,7 +19,7 @@ pip install -r requirements.txt
 pip uninstall -y opencv-python opencv-python-headless 2>/dev/null || true
 
 echo "==> Downloading the YOLO model (needs internet, one time)"
-python -c "from ultralytics import YOLO; YOLO('yolo11n.pt')"
+python -c "from ultralytics import YOLO; YOLO('yolo11s.pt')"
 
 echo "==> Checking imports"
 python -c "import cv2, picamera2, ultralytics; print('OpenCV', cv2.__version__)"
