@@ -178,3 +178,4 @@ pyrightconfig.json
 data/*.csv
 __pycache__/
 .pytest_cache/
+benchmark/results/

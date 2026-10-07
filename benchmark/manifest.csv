@@ -1,0 +1,9 @@
+filename,expected_count,scenario
+00_empty.png,0,empty
+05_seated.png,5,sparse
+09_seated.png,09,normal
+10_back_rows.png,10,distant
+13_mixed.png,13,mixed_standing
+15_seated.png,15,normal
+16_occluded.png,16,occlusion
+18_seated.png,18,dense

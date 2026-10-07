@@ -7,6 +7,7 @@ import time
 
 import config
 from logger import init_csv, log_count
+from overlay import draw_detections
 
 
 class _Stop(Exception):
@@ -17,13 +18,9 @@ def _raise_stop(signum, frame):
     raise _Stop
 
 
-def draw_overlay(cv2, frame, boxes, fps):
-    annotated = frame.copy()
-    for x1, y1, x2, y2, conf in boxes:
-        cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(annotated, f"{conf:.2f}", (x1, max(y1 - 6, 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-    cv2.putText(annotated, f"People: {len(boxes)}", (20, 60),
+def draw_overlay(cv2, frame, detections, fps):
+    annotated = draw_detections(cv2, frame, detections)
+    cv2.putText(annotated, f"People: {len(detections)}", (20, 60),
                 cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
     cv2.putText(annotated, f"{fps:.1f} FPS", (20, 100),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)

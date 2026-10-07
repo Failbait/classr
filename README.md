@@ -49,3 +49,24 @@ pip install pytest && pytest
 - `ModuleNotFoundError: picamera2` — the venv must be created with `--system-site-packages` (setup.sh does this).
 - `cv2` import/numpy errors — `pip uninstall opencv-python opencv-python-headless` to use the apt OpenCV.
 - No preview window over SSH — use `--no-preview`.
+
+## Benchmark (offline detector test)
+Runs the **same detector as the live app** (`detector.py`, same `config.py` settings)
+over static images with known people counts. No camera needed.
+
+```bash
+./run_benchmark.sh                                   # uses benchmark/manifest.csv
+./run_benchmark.sh --manifest path/to/manifest.csv
+```
+(`run_benchmark.sh` activates `.venv` and calls `python benchmark.py`.)
+
+- **Input:** `benchmark/manifest.csv` (`filename,expected_count,scenario`) and the images in `benchmark/images/`. Add the images listed in the manifest there; the run fails with a clear error if any is missing.
+- **Output:** `benchmark/results/results.csv` (overwritten each run) and annotated `benchmark/results/*_detected.png`.
+- **Console:** one line per image, then MAE, max error, exact-count accuracy and mean inference time.
+
+Use it to compare detector settings (model, confidence, image size) and find failure
+cases: distant people, partial occlusion, dense seating, standing/mixed scenes.
+
+**Note:** the benchmark uses synthetic/static images. Its numbers must not be presented
+as real-world classroom accuracy. Annotated benchmark images may be saved; this does not
+change the rule that live camera frames are never persisted.
