@@ -94,6 +94,9 @@ def run(manifest_path):
     except Exception as exc:
         raise BenchmarkError(f"Detector failed to initialize: {exc}") from exc
 
+    # Untimed warm-up: the first inference is far slower (model/runtime init).
+    detect_people(model, cv2.imread(str(image_dir / cases[0]["filename"])))
+
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     rows = []
     for i, case in enumerate(cases, start=1):
@@ -137,7 +140,17 @@ def print_summary(s):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    # Temporary overrides of the shared config.py values, for comparing settings.
+    parser.add_argument("--conf", type=float, help="override CONFIDENCE_THRESHOLD")
+    parser.add_argument("--imgsz", type=int, help="override INFERENCE_IMAGE_SIZE")
+    parser.add_argument("--model", help="override MODEL_NAME (e.g. yolo11s.pt)")
     args = parser.parse_args()
+    if args.conf is not None:
+        config.CONFIDENCE_THRESHOLD = args.conf
+    if args.imgsz is not None:
+        config.INFERENCE_IMAGE_SIZE = args.imgsz
+    if args.model:
+        config.MODEL_NAME = args.model
     try:
         run(args.manifest)
     except BenchmarkError as exc:
