@@ -9,3 +9,5 @@ PERSON_CLASS_ID = 0  # COCO class 0 = person
 INFERENCE_IMAGE_SIZE = 640
 
 CAMERA_RESOLUTION = (1280, 720)
+
+START_FULLSCREEN = False  # press "f" in the preview to toggle at runtime

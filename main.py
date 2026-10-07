@@ -30,6 +30,15 @@ def draw_overlay(cv2, frame, boxes, fps):
     return annotated
 
 
+WINDOW_NAME = "People counter"
+
+
+def toggle_fullscreen(cv2):
+    current = cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
+    target = cv2.WINDOW_NORMAL if current == cv2.WINDOW_FULLSCREEN else cv2.WINDOW_FULLSCREEN
+    cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, target)
+
+
 def has_display():
     return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
@@ -44,6 +53,12 @@ def run(show_preview):
         print("No display found (SSH session?); running without preview. "
               "To show it on the Pi's screen use: DISPLAY=:0 ./run.sh")
         show_preview = False
+
+    if show_preview:
+        # WINDOW_NORMAL makes the window resizable/fullscreen-able (default is fixed size).
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+        if config.START_FULLSCREEN:
+            cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     init_csv(config.CSV_PATH)
     model = load_model()
@@ -69,8 +84,12 @@ def run(show_preview):
                 next_log += config.LOG_INTERVAL_SECONDS
 
             if show_preview:
-                cv2.imshow("People counter", draw_overlay(cv2, frame, boxes, fps))
-                cv2.waitKey(1)
+                cv2.imshow(WINDOW_NAME, draw_overlay(cv2, frame, boxes, fps))
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord("f"):
+                    toggle_fullscreen(cv2)
+                elif key in (ord("q"), 27):
+                    break
     finally:
         stop_camera(camera)
         cv2.destroyAllWindows()
