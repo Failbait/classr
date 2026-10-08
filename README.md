@@ -13,8 +13,8 @@ git clone <this repo> && cd classr
 ./setup.sh
 ```
 `setup.sh` installs the apt packages (`python3-picamera2`, `python3-opencv`),
-creates `.venv` (with system site packages), installs `ultralytics` + `numpy`,
-downloads the `yolo11s.pt` model, and checks the camera. Needs internet once.
+creates `.venv` (with system site packages), installs `rfdetr` + `ultralytics` + `numpy`,
+downloads the model set in `config.py` (RF-DETR small), and checks the camera. Needs internet once.
 
 ## Camera sanity check
 ```bash
@@ -77,3 +77,9 @@ sweep it: `./sweep_benchmark.sh --models yolo11s.pt rfdetr-small --conf 0.4 0.5 
 Install the extra dependency first: `pip install -r requirements-rfdetr.txt`.
 For RF-DETR, `INFERENCE_IMAGE_SIZE = 0` means the model's native resolution; other values
 are rounded to the nearest size the model accepts.
+
+### Checking for false positives
+`./run_benchmark.sh` saves every benchmark image with its boxes and confidence scores to
+`benchmark/results/<name>_detected.png`. Open them to check for false positives (boxes on
+chairs, bags, laptops) and misses. Only the static benchmark images are saved; the live app
+still never saves camera frames.

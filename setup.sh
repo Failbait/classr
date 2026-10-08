@@ -14,15 +14,15 @@ source .venv/bin/activate
 
 echo "==> Installing Python packages"
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-rfdetr.txt
 # Ultralytics pulls in pip OpenCV, which can shadow the system build. Prefer the apt one.
 pip uninstall -y opencv-python opencv-python-headless 2>/dev/null || true
 
-echo "==> Downloading the YOLO model (needs internet, one time)"
-python -c "from ultralytics import YOLO; YOLO('yolo11s.pt')"
+echo "==> Downloading the detector model from config.py (needs internet, one time)"
+python -c "import detector; detector.load_model()"
 
 echo "==> Checking imports"
-python -c "import cv2, picamera2, ultralytics; print('OpenCV', cv2.__version__)"
+python -c "import cv2, picamera2, rfdetr; print('OpenCV', cv2.__version__)"
 
 echo "==> Checking camera"
 rpicam-hello --list-cameras || echo "WARNING: no camera detected, check the ribbon cable."
