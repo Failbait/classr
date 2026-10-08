@@ -18,7 +18,7 @@ def load_model():
     if config.MODEL_NAME.startswith(RFDETR_PREFIX):
         return _load_rfdetr(config.MODEL_NAME[len(RFDETR_PREFIX):])
     from ultralytics import YOLO
-    return YOLO(config.MODEL_NAME)
+    return YOLO(config.MODEL_NAME, task="detect")  # also loads exported *_ncnn_model folders
 
 
 def _load_rfdetr(size):

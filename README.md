@@ -117,3 +117,16 @@ Then annotated images for a chosen setting, one folder per model so nothing is o
 ./run_benchmark.sh --model yolo11s.pt --imgsz 640 --conf 0.4 --out-dir benchmark/results/yolo11s
 ./run_benchmark.sh --model yolo26s.pt --imgsz 640 --conf 0.4 --out-dir benchmark/results/yolo26s
 ```
+
+## NCNN export (faster inference on the Pi)
+NCNN usually runs YOLO faster than PyTorch on the Pi's CPU. The exported model has a fixed
+input size, so it is exported at `INFERENCE_IMAGE_SIZE` and must be re-exported if you change
+the model or size. On the Pi:
+```bash
+source .venv/bin/activate
+python export_ncnn.py                 # creates e.g. yolo26s_ncnn_model/ (needs internet once for pnnx/ncnn)
+./run_benchmark.sh --model yolo26s_ncnn_model --out-dir benchmark/results/yolo26s_ncnn
+./test_composites.sh --model yolo26s_ncnn_model --out-dir benchmark/results/composites_ncnn
+```
+Check that the counts match the PyTorch runs and compare the mean inference time, then set
+`MODEL_NAME = "yolo26s_ncnn_model"` in `config.py`.

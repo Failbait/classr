@@ -181,3 +181,4 @@ __pycache__/
 benchmark/results/
 *.pt
 captures/
+*_ncnn_model/
