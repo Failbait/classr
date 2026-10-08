@@ -88,7 +88,7 @@ still never saves camera frames.
 ### Post-filtering rules (`config.py`)
 - `SMALL_BOX_CONFIDENCE` / `SMALL_BOX_HEIGHT_FRACTION`: small (far-away) boxes are accepted at a lower confidence than `CONFIDENCE_THRESHOLD`. `0` disables.
 - `DEDUPE_CONTAINMENT`: a box is dropped when this fraction of it lies inside a higher-scoring box. `0` disables.
-- Compare variants: `./sweep_benchmark.sh --models rfdetr-small --imgsz 0 --conf 0.4 --dedupe 0 0.85 --small-conf 0 0.3`.
+- Compare variants: `./sweep_benchmark.sh --models rfdetr-small --rfdetr-imgsz 0 --conf 0.4 --dedupe 0 0.85 --small-conf 0 0.3`.
 
 ## Capturing test frames from the real camera (`--save-frame`)
 Opt-in mode for building benchmark images from the mounted camera. It saves raw still frames
@@ -103,12 +103,16 @@ To use one as a benchmark case: copy it to `benchmark/images/`, add a row to
 Copy from the Pi with e.g. `scp classr@classr.local:/home/classr/classr/captures/*.png ~/Downloads/captures/`.
 
 ## Comparing detector models
-Same rules (confidence, small-box, duplicate filter) apply to every backend. Numbers first:
+Same rules (confidence, small-box, duplicate filter) apply to every backend. Compare at similar
+cost per frame (~1 s on the Pi): `--imgsz` is for YOLO, `--rfdetr-imgsz` for RF-DETR (0 = native 512),
+and `--reference` is the config the others are judged against. Numbers first:
 ```bash
-./sweep_benchmark.sh --models yolo11s.pt yolo26s.pt --imgsz 960 1280 --conf 0.3 0.4 0.5 --dedupe 0 0.85 --small-conf 0 0.3
+./sweep_benchmark.sh --models rfdetr-small yolo11s.pt yolo26s.pt yolo11n.pt yolo26n.pt \
+  --rfdetr-imgsz 0 --imgsz 512 640 768 --conf 0.3 0.4 0.5 --dedupe 0.85 --small-conf 0 0.3 \
+  --reference rfdetr-small,0,0.4,0.85,0.3
 ```
 Then annotated images for a chosen setting, one folder per model so nothing is overwritten:
 ```bash
-./run_benchmark.sh --model yolo11s.pt --imgsz 1280 --conf 0.5 --out-dir benchmark/results/yolo11s
-./run_benchmark.sh --model yolo26s.pt --imgsz 1280 --conf 0.5 --out-dir benchmark/results/yolo26s
+./run_benchmark.sh --model yolo11s.pt --imgsz 640 --conf 0.4 --out-dir benchmark/results/yolo11s
+./run_benchmark.sh --model yolo26s.pt --imgsz 640 --conf 0.4 --out-dir benchmark/results/yolo26s
 ```

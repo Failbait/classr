@@ -55,7 +55,7 @@ def load_images(cv2, manifest):
     return cases, images
 
 
-def sweep(models, sizes, confs, dedupes, small_confs, manifest):
+def sweep(models, sizes, rfdetr_sizes, confs, dedupes, small_confs, manifest):
     import cv2
     from detector import analyze, load_model
 
@@ -68,7 +68,8 @@ def sweep(models, sizes, confs, dedupes, small_confs, manifest):
         except Exception as exc:
             print(f"SKIP {model_name}: {exc}", file=sys.stderr)
             continue
-        model_sizes = sizes or (RFDETR_IMGSZ if model_name.startswith("rfdetr-") else DEFAULT_IMGSZ)
+        is_rfdetr = model_name.startswith("rfdetr-")
+        model_sizes = (rfdetr_sizes or RFDETR_IMGSZ) if is_rfdetr else (sizes or DEFAULT_IMGSZ)
         for imgsz in model_sizes:
             for conf, dedupe, small in itertools.product(confs, dedupes, small_confs):
                 config.INFERENCE_IMAGE_SIZE, config.CONFIDENCE_THRESHOLD = imgsz, conf
@@ -105,10 +106,19 @@ def write_outputs(entries):
                         f"{e['hard_mae']:.2f}", s["empty_false_positives"], f"{s['mean_ms']:.0f}"])
 
 
-def print_table(entries, top):
+def parse_reference(text):
+    try:
+        model, imgsz, conf, dedupe, small = text.split(",")
+        return (model, int(imgsz), float(conf), float(dedupe), float(small))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "expected model,imgsz,conf,dedupe,small (e.g. rfdetr-small,0,0.4,0.85,0.3)")
+
+
+def print_table(entries, top, reference):
     ranked = sorted(entries, key=rank_key)
     base = next((e for e in entries
-                 if (e["model"], e["imgsz"], e["conf"], e["dedupe"], e["small"]) == BASELINE), None)
+                 if (e["model"], e["imgsz"], e["conf"], e["dedupe"], e["small"]) == reference), None)
     header = (f"{'#':>3} {'model':<13} {'imgsz':>5} {'conf':>4} {'dedup':>5} {'small':>5} {'MAE':>5} {'signed':>6} "
               f"{'exact':>5} {'hardMAE':>7} {'emptyFP':>7} {'ms':>6}")
     print("\n" + header)
@@ -117,26 +127,27 @@ def print_table(entries, top):
         shown.append(base)
     for e in shown:
         s = e["summary"]
-        tag = "  <- baseline" if e is base else ""
+        tag = "  <- reference" if e is base else ""
         print(f"{ranked.index(e) + 1:>3} {e['model']:<13} {e['imgsz']:>5} {e['conf']:>4} "
               f"{e['dedupe']:>5} {e['small']:>5} "
               f"{s['mae']:>5.2f} {s['mean_signed_error']:>+6.2f} {s['exact']}/{s['images']:<3} "
               f"{e['hard_mae']:>7.2f} {s['empty_false_positives']:>7} {s['mean_ms']:>6.0f}{tag}")
-    print_verdict(entries, base)
+    print_verdict(entries, base, reference)
 
 
-def print_verdict(entries, base):
+def print_verdict(entries, base, reference):
     if base is None:
-        print("\nBaseline (yolo11s @ 1280 @ 0.5, dedupe 0, small 0) not in sweep; no verdict.")
+        print(f"\nReference {reference} not in sweep; no verdict.")
         return
-    print(f"\nBaseline: MAE={base['summary']['mae']:.2f} exact={base['summary']['exact']}/8")
+    print(f"\nReference {reference}: MAE={base['summary']['mae']:.2f} "
+          f"exact={base['summary']['exact']}/8 {base['summary']['mean_ms']:.0f} ms")
     for model in sorted({e["model"] for e in entries} - {base["model"]}):
         best = min((e for e in entries if e["model"] == model), key=rank_key)
         verdict = "BEATS" if rank_key(best) < rank_key(base) else "does NOT beat"
         print(f"Best {model}: imgsz={best['imgsz']} conf={best['conf']} "
               f"dedupe={best['dedupe']} small={best['small']} "
               f"MAE={best['summary']['mae']:.2f} exact={best['summary']['exact']}/8"
-              f"  -> {verdict} the baseline")
+              f"  {best['summary']['mean_ms']:.0f} ms -> {verdict} the reference")
 
 
 def main():
@@ -144,7 +155,12 @@ def main():
     p.add_argument("--manifest", default=DEFAULT_MANIFEST)
     p.add_argument("--models", nargs="+", default=DEFAULT_MODELS)
     p.add_argument("--imgsz", nargs="+", type=int,
-                   help="image sizes for all models (default: per-backend lists; 0 = RF-DETR native)")
+                   help="image sizes for YOLO models (multiples of 32)")
+    p.add_argument("--rfdetr-imgsz", nargs="+", type=int,
+                   help="image sizes for RF-DETR models (0 = native; default 0 672 896 1120)")
+    p.add_argument("--reference", type=parse_reference, default=BASELINE,
+                   help="config to compare against: model,imgsz,conf,dedupe,small "
+                        "(default yolo11s.pt,1280,0.5,0,0)")
     p.add_argument("--conf", nargs="+", type=float, default=DEFAULT_CONFS)
     p.add_argument("--dedupe", nargs="+", type=float, default=[0, config.DEDUPE_CONTAINMENT],
                    help="DEDUPE_CONTAINMENT values to try (0 = off)")
@@ -153,7 +169,7 @@ def main():
     p.add_argument("--top", type=int, default=10)
     args = p.parse_args()
     try:
-        entries = sweep(args.models, args.imgsz, args.conf, args.dedupe, args.small_conf,
+        entries = sweep(args.models, args.imgsz, args.rfdetr_imgsz, args.conf, args.dedupe, args.small_conf,
                          args.manifest)
         if not entries:
             raise BenchmarkError("no configuration produced results")
@@ -161,7 +177,7 @@ def main():
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
     write_outputs(entries)
-    print_table(entries, args.top)
+    print_table(entries, args.top, args.reference)
     print(f"\nWrote {OUT_DIR}/summary.csv and {OUT_DIR}/per_image.csv")
 
 
