@@ -1,0 +1,5 @@
+filename,expected_count,scenario
+17sittingleft.png,17,composite_left
+17sittingmixed.png,17,composite_mixed
+27sittingright.png,27,composite_right
+44sitting.png,44,composite_dense
