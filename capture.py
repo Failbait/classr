@@ -27,10 +27,11 @@ def capture_frames(out_dir, delay, count, interval):
         Path(out_dir).mkdir(parents=True, exist_ok=True)
         for index in range(1, count + 1):
             path = frame_path(out_dir, datetime.now(), index)
-            if not cv2.imwrite(str(path), read_frame(camera)):
+            frame = read_frame(camera)
+            if not cv2.imwrite(str(path), frame):
                 raise RuntimeError(f"Could not write {path}")
             saved.append(path)
-            print(f"Saved {path} ({index}/{count})", flush=True)
+            print(f"Saved {path} {frame.shape[1]}x{frame.shape[0]} ({index}/{count})", flush=True)
             if index < count:
                 time.sleep(interval)
     finally:

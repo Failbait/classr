@@ -52,8 +52,8 @@ def run(show_preview):
         show_preview = False
 
     if show_preview:
-        # WINDOW_NORMAL makes the window resizable/fullscreen-able (default is fixed size).
-        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+        # WINDOW_NORMAL makes the window resizable/fullscreen-able; KEEPRATIO stops it stretching.
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)
         if config.START_FULLSCREEN:
             cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
@@ -64,12 +64,16 @@ def run(show_preview):
     last_tick = time.monotonic()
     fps = 0.0
     boxes = []
+    first_frame = True
     print(f"Running. Logging to {config.CSV_PATH} every "
           f"{config.LOG_INTERVAL_SECONDS}s. Ctrl+C to stop.")
 
     try:
         while True:
             frame = read_frame(camera)
+            if first_frame:
+                print(f"Camera frame: {frame.shape[1]}x{frame.shape[0]}")
+                first_frame = False
             boxes = detect_people(model, frame)
 
             now = time.monotonic()
