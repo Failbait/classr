@@ -19,9 +19,13 @@ SMALL_BOX_CONFIDENCE = 0.3
 # one person, e.g. upper-body + full-body). 0 disables the rule.
 DEDUPE_CONTAINMENT = 0.85
 
-# imx708 sensor modes (all 16:9, full field of view): 1536x864, 2304x1296, 4608x2592.
-# The detectors shrink frames to 512-768 px anyway, so the smallest native mode is enough.
+# imx708 sensor modes: 1536x864 is a centre CROP of the sensor (narrower view), so the live
+# stream asks for the 2304x1296 mode (full field of view) and the ISP scales it down to
+# CAMERA_RESOLUTION. The detectors shrink frames to 512-768 px anyway.
+CAMERA_SENSOR_MODE = (2304, 1296)
 CAMERA_RESOLUTION = (1536, 864)
+# The camera is mounted upside down: rotate frames 180 degrees (live and --save-frame).
+CAMERA_ROTATE_180 = True
 # --save-frame uses the full sensor for the sharpest source images (e.g. for composites).
 CAPTURE_RESOLUTION = (4608, 2592)
 
