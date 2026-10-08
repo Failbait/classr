@@ -1,6 +1,6 @@
 """Picamera2 wrapper: start, grab frames, stop."""
 
-from libcamera import Transform
+from libcamera import Transform, controls
 from picamera2 import Picamera2
 
 import config
@@ -9,6 +9,23 @@ import config
 def _transform():
     # hflip + vflip = 180 degree rotation (camera mounted upside down).
     return Transform(hflip=config.CAMERA_ROTATE_180, vflip=config.CAMERA_ROTATE_180)
+
+
+def _lock_focus(camera):
+    """Lock focus so the far rows stay sharp (continuous autofocus can hunt or pick near objects)."""
+    if "AfMode" not in camera.camera_controls:
+        print("Camera has no autofocus; skipping focus lock.")
+        return
+    position = config.CAMERA_LENS_POSITION
+    if position is None:
+        camera.set_controls({"AfMode": controls.AfModeEnum.Auto})
+        if not camera.autofocus_cycle():
+            print("Autofocus did not converge; keeping the current focus.")
+        position = camera.capture_metadata().get("LensPosition")
+    if position is None:
+        return
+    camera.set_controls({"AfMode": controls.AfModeEnum.Manual, "LensPosition": float(position)})
+    print(f"Focus locked at lens position {float(position):.2f} (about {1 / max(position, 1e-3):.1f} m)")
 
 
 def start_camera():
@@ -23,6 +40,7 @@ def start_camera():
     )
     camera.configure(camera_config)
     camera.start()
+    _lock_focus(camera)
     return camera
 
 
@@ -32,6 +50,7 @@ def start_still_camera(resolution=config.CAPTURE_RESOLUTION):
     camera.configure(camera.create_still_configuration(
         main={"size": resolution, "format": "RGB888"}, transform=_transform()))
     camera.start()
+    _lock_focus(camera)
     return camera
 
 
