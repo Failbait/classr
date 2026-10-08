@@ -9,7 +9,7 @@ import types
 
 # capture.py imports the Pi-only camera module at import time; stub it for this unit test.
 _sys.modules.setdefault("camera", types.SimpleNamespace(
-    read_frame=None, start_camera=None, stop_camera=None))
+    read_frame=None, start_still_camera=None, stop_camera=None))
 
 from capture import frame_path
 

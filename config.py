@@ -19,7 +19,11 @@ SMALL_BOX_CONFIDENCE = 0.3
 # one person, e.g. upper-body + full-body). 0 disables the rule.
 DEDUPE_CONTAINMENT = 0.85
 
-CAMERA_RESOLUTION = (1280, 720)
+# imx708 sensor modes (all 16:9, full field of view): 1536x864, 2304x1296, 4608x2592.
+# The detectors shrink frames to 512-768 px anyway, so the smallest native mode is enough.
+CAMERA_RESOLUTION = (1536, 864)
+# --save-frame uses the full sensor for the sharpest source images (e.g. for composites).
+CAPTURE_RESOLUTION = (4608, 2592)
 
 START_FULLSCREEN = False  # press "f" in the preview to toggle at runtime
 

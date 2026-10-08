@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from camera import read_frame, start_camera, stop_camera
+from camera import read_frame, start_still_camera, stop_camera
 
 
 def frame_path(out_dir, now, index):
@@ -18,7 +18,7 @@ def frame_path(out_dir, now, index):
 def capture_frames(out_dir, delay, count, interval):
     import cv2
 
-    camera = start_camera()
+    camera = start_still_camera()
     saved = []
     try:
         for remaining in range(int(delay), 0, -1):

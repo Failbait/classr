@@ -16,6 +16,15 @@ def start_camera():
     return camera
 
 
+def start_still_camera(resolution=config.CAPTURE_RESOLUTION):
+    """Full-resolution still configuration (single buffer, so large sizes fit in camera memory)."""
+    camera = Picamera2()
+    camera.configure(camera.create_still_configuration(
+        main={"size": resolution, "format": "RGB888"}))
+    camera.start()
+    return camera
+
+
 def read_frame(camera):
     return camera.capture_array()
 

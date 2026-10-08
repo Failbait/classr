@@ -97,6 +97,7 @@ and exits; nothing is detected or logged, and normal runs never save images.
 ./run.sh --save-frame                       # one frame after a 10 s countdown
 ./run.sh --save-frame --delay 20 --count 5 --interval 4
 ```
+Frames are saved at the full sensor resolution (4608×2592, `CAPTURE_RESOLUTION`), roughly 20 MB each as PNG, so keep `--count` modest. For benchmark cases, export the finished image at 1536×864 (the live `CAMERA_RESOLUTION`) so the benchmark matches the live pipeline.
 Frames go to `captures/` (git-ignored; they contain images of people, so delete them when done).
 To use one as a benchmark case: copy it to `benchmark/images/`, add a row to
 `benchmark/manifest.csv` with the count you verified by eye, and re-run the benchmark.
