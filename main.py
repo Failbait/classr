@@ -97,9 +97,26 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-preview", action="store_true",
                         help="run without a display (e.g. over SSH)")
+    parser.add_argument("--save-frame", action="store_true",
+                        help="capture still frames for building benchmark images, then exit "
+                             "(no detection, no logging)")
+    parser.add_argument("--delay", type=int, default=10,
+                        help="--save-frame: seconds before the first capture (default 10)")
+    parser.add_argument("--count", type=int, default=1,
+                        help="--save-frame: number of frames to save (default 1)")
+    parser.add_argument("--interval", type=float, default=3.0,
+                        help="--save-frame: seconds between frames (default 3)")
+    parser.add_argument("--out-dir", default=config.CAPTURE_DIR,
+                        help=f"--save-frame: output folder (default {config.CAPTURE_DIR})")
     args = parser.parse_args()
+    if args.count < 1 or args.delay < 0 or args.interval < 0:
+        parser.error("--count must be >= 1; --delay and --interval must be >= 0")
     signal.signal(signal.SIGTERM, _raise_stop)
     try:
+        if args.save_frame:
+            from capture import capture_frames
+            capture_frames(args.out_dir, args.delay, args.count, args.interval)
+            return
         run(show_preview=not args.no_preview)
     except (KeyboardInterrupt, _Stop):
         pass

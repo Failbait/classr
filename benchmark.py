@@ -19,6 +19,11 @@ class BenchmarkError(Exception):
     pass
 
 
+def set_results_dir(path):
+    global RESULTS_DIR
+    RESULTS_DIR = path
+
+
 def load_manifest(manifest_path):
     path = Path(manifest_path)
     if not path.is_file():
@@ -154,6 +159,8 @@ def print_summary(s):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    parser.add_argument("--out-dir", default=str(RESULTS_DIR),
+                        help="where to write results.csv and annotated images")
     # Temporary overrides of the shared config.py values, for comparing settings.
     parser.add_argument("--conf", type=float, help="override CONFIDENCE_THRESHOLD")
     parser.add_argument("--imgsz", type=int, help="override INFERENCE_IMAGE_SIZE")
@@ -161,6 +168,7 @@ def main():
     parser.add_argument("--dedupe", type=float, help="override DEDUPE_CONTAINMENT (0 = off)")
     parser.add_argument("--small-conf", type=float, help="override SMALL_BOX_CONFIDENCE (0 = off)")
     args = parser.parse_args()
+    set_results_dir(Path(args.out_dir))
     if args.conf is not None:
         config.CONFIDENCE_THRESHOLD = args.conf
     if args.imgsz is not None:

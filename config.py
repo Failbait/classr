@@ -22,3 +22,5 @@ DEDUPE_CONTAINMENT = 0.85
 CAMERA_RESOLUTION = (1280, 720)
 
 START_FULLSCREEN = False  # press "f" in the preview to toggle at runtime
+
+CAPTURE_DIR = "captures"  # --save-frame output (git-ignored; contains images of people)

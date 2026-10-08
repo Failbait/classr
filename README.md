@@ -89,3 +89,26 @@ still never saves camera frames.
 - `SMALL_BOX_CONFIDENCE` / `SMALL_BOX_HEIGHT_FRACTION`: small (far-away) boxes are accepted at a lower confidence than `CONFIDENCE_THRESHOLD`. `0` disables.
 - `DEDUPE_CONTAINMENT`: a box is dropped when this fraction of it lies inside a higher-scoring box. `0` disables.
 - Compare variants: `./sweep_benchmark.sh --models rfdetr-small --imgsz 0 --conf 0.4 --dedupe 0 0.85 --small-conf 0 0.3`.
+
+## Capturing test frames from the real camera (`--save-frame`)
+Opt-in mode for building benchmark images from the mounted camera. It saves raw still frames
+and exits; nothing is detected or logged, and normal runs never save images.
+```bash
+./run.sh --save-frame                       # one frame after a 10 s countdown
+./run.sh --save-frame --delay 20 --count 5 --interval 4
+```
+Frames go to `captures/` (git-ignored; they contain images of people, so delete them when done).
+To use one as a benchmark case: copy it to `benchmark/images/`, add a row to
+`benchmark/manifest.csv` with the count you verified by eye, and re-run the benchmark.
+Copy from the Pi with e.g. `scp classr@classr.local:/home/classr/classr/captures/*.png ~/Downloads/captures/`.
+
+## Comparing detector models
+Same rules (confidence, small-box, duplicate filter) apply to every backend. Numbers first:
+```bash
+./sweep_benchmark.sh --models yolo11s.pt yolo26s.pt --imgsz 960 1280 --conf 0.3 0.4 0.5 --dedupe 0 0.85 --small-conf 0 0.3
+```
+Then annotated images for a chosen setting, one folder per model so nothing is overwritten:
+```bash
+./run_benchmark.sh --model yolo11s.pt --imgsz 1280 --conf 0.5 --out-dir benchmark/results/yolo11s
+./run_benchmark.sh --model yolo26s.pt --imgsz 1280 --conf 0.5 --out-dir benchmark/results/yolo26s
+```
