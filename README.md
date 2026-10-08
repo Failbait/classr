@@ -81,5 +81,11 @@ are rounded to the nearest size the model accepts.
 ### Checking for false positives
 `./run_benchmark.sh` saves every benchmark image with its boxes and confidence scores to
 `benchmark/results/<name>_detected.png`. Open them to check for false positives (boxes on
-chairs, bags, laptops) and misses. Only the static benchmark images are saved; the live app
+chairs, bags, laptops) and misses. In these images **green** boxes were counted and **orange** boxes are candidates that were
+rejected (low confidence, or a duplicate of a higher-scoring box). Only the static benchmark images are saved; the live app
 still never saves camera frames.
+
+### Post-filtering rules (`config.py`)
+- `SMALL_BOX_CONFIDENCE` / `SMALL_BOX_HEIGHT_FRACTION`: small (far-away) boxes are accepted at a lower confidence than `CONFIDENCE_THRESHOLD`. `0` disables.
+- `DEDUPE_CONTAINMENT`: a box is dropped when this fraction of it lies inside a higher-scoring box. `0` disables.
+- Compare variants: `./sweep_benchmark.sh --models rfdetr-small --imgsz 0 --conf 0.4 --dedupe 0 0.85 --small-conf 0 0.3`.

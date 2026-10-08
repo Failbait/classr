@@ -65,21 +65,23 @@ def summarize(rows):
     }
 
 
-def measure(detect_people, model, image, case):
-    """Run the shared detector on one image; return (result row, detections)."""
+def measure(analyze, model, image, case):
+    """Run the shared detector on one image; return (result row, accepted, rejected)."""
     start = time.perf_counter()
-    detections = detect_people(model, image)
+    detections, rejected = analyze(model, image)
     elapsed_ms = (time.perf_counter() - start) * 1000
     detected = len(detections)
     row = {"filename": case["filename"], "scenario": case["scenario"],
            "expected_count": case["expected"], "detected_count": detected,
            "inference_time_ms": round(elapsed_ms, 1),
            **compute_metrics(case["expected"], detected)}
-    return row, detections
+    return row, detections, rejected
 
 
-def annotate(cv2, image, detections, expected, signed):
-    annotated = draw_detections(cv2, image, detections)
+def annotate(cv2, image, detections, rejected, expected, signed):
+    # Orange = candidates that did NOT count (low confidence or duplicate); green = counted.
+    annotated = draw_detections(cv2, image, rejected, color=(0, 165, 255))
+    annotated = draw_detections(cv2, annotated, detections)
     for i, text in enumerate([f"Expected: {expected}", f"Detected: {len(detections)}",
                               f"Error: {signed:+d}"]):
         cv2.putText(annotated, text, (20, 45 + i * 45), cv2.FONT_HERSHEY_SIMPLEX, 1.3,
@@ -103,7 +105,7 @@ def run(manifest_path):
             raise BenchmarkError(f"Image not found: {image_dir / case['filename']}")
 
     import cv2
-    from detector import detect_people, load_model
+    from detector import analyze, load_model
 
     try:
         model = load_model()
@@ -111,7 +113,7 @@ def run(manifest_path):
         raise BenchmarkError(f"Detector failed to initialize: {exc}") from exc
 
     # Untimed warm-up: the first inference is far slower (model/runtime init).
-    detect_people(model, cv2.imread(str(image_dir / cases[0]["filename"])))
+    analyze(model, cv2.imread(str(image_dir / cases[0]["filename"])))
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -121,13 +123,13 @@ def run(manifest_path):
         if image is None:
             raise BenchmarkError(f"Could not load image: {path}")
 
-        row, detections = measure(detect_people, model, image, case)
+        row, detections, rejected = measure(analyze, model, image, case)
         detected = row["detected_count"]
         elapsed_ms = row["inference_time_ms"]
         rows.append(row)
 
         out = RESULTS_DIR / f"{path.stem}_detected.png"
-        cv2.imwrite(str(out), annotate(cv2, image, detections, case["expected"],
+        cv2.imwrite(str(out), annotate(cv2, image, detections, rejected, case["expected"],
                                        row["signed_error"]))
         print(f"[{i}/{len(cases)}] {case['filename']:<20} expected={case['expected']:<3} "
               f"detected={detected:<3} error={row['signed_error']:+d}   {elapsed_ms:.1f} ms")
@@ -156,6 +158,8 @@ def main():
     parser.add_argument("--conf", type=float, help="override CONFIDENCE_THRESHOLD")
     parser.add_argument("--imgsz", type=int, help="override INFERENCE_IMAGE_SIZE")
     parser.add_argument("--model", help="override MODEL_NAME (e.g. yolo11s.pt)")
+    parser.add_argument("--dedupe", type=float, help="override DEDUPE_CONTAINMENT (0 = off)")
+    parser.add_argument("--small-conf", type=float, help="override SMALL_BOX_CONFIDENCE (0 = off)")
     args = parser.parse_args()
     if args.conf is not None:
         config.CONFIDENCE_THRESHOLD = args.conf
@@ -163,6 +167,10 @@ def main():
         config.INFERENCE_IMAGE_SIZE = args.imgsz
     if args.model:
         config.MODEL_NAME = args.model
+    if args.dedupe is not None:
+        config.DEDUPE_CONTAINMENT = args.dedupe
+    if args.small_conf is not None:
+        config.SMALL_BOX_CONFIDENCE = args.small_conf
     try:
         run(args.manifest)
     except BenchmarkError as exc:
