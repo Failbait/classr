@@ -14,7 +14,7 @@ git clone <this repo> && cd classr
 ```
 `setup.sh` installs the apt packages (`python3-picamera2`, `python3-opencv`),
 creates `.venv` (with system site packages), installs `rfdetr` + `ultralytics` + `numpy`,
-downloads the model set in `config.py` (RF-DETR small), and checks the camera. Needs internet once.
+exports the model set in `config.py` (yolo26s, converted to NCNN), and checks the camera. Needs internet once.
 
 ## Camera sanity check
 ```bash
@@ -37,8 +37,26 @@ timestamp,people_count
 ```
 
 ## Configuration (`config.py`)
-- `CONFIDENCE_THRESHOLD = 0.5` — minimum detection confidence
+- `MODEL_NAME = "yolo26s_ncnn_model"` — NCNN export of yolo26s (`python export_ncnn.py`); `"yolo26s.pt"` or `"rfdetr-small"` also work
+- `INFERENCE_IMAGE_SIZE = 1600` — YOLO input size (multiple of 32); must match the NCNN export size
+- `CONFIDENCE_THRESHOLD = 0.3` — minimum detection confidence
+- `SMALL_BOX_CONFIDENCE` / `SMALL_BOX_HEIGHT_FRACTION` — lower threshold for small, far-away people (0 = off)
+- `DEDUPE_CONTAINMENT = 0.85` — drop a box mostly inside a higher-scoring box (0 = off)
 - `LOG_INTERVAL_SECONDS = 5` — logging interval (monotonic time, independent of FPS)
+- `CAMERA_SENSOR_MODE`, `CAMERA_RESOLUTION`, `CAMERA_ROTATE_180`, `CAMERA_LENS_POSITION` — camera setup (focus is locked after one autofocus cycle at startup)
+
+## Current detector setup and benchmark results
+yolo26s, exported to NCNN, 1600 px input, confidence 0.3, duplicate filter on, about 1.4 s per frame on the Pi 5.
+
+| set | images | mean abs. error | exact |
+|---|---|---|---|
+| Photos (`benchmark/`) | 8 | 0.25 | 6/8 |
+| Composites (`benchmark_composites/`) | 9 | 0.56 | 5/9 |
+| Combined | 17 | 0.41 | 11/17 |
+
+Run both with `./benchmark_all.sh`. Caveats: the settings were tuned on these images, the composites are
+copies of one person pasted into the room, and the counts are taken from the file names. Treat the numbers as
+a regression check, not as real-world classroom accuracy. Validate on the mounted camera with a known head count.
 
 ## Tests
 ```bash
