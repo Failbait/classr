@@ -3,3 +3,5 @@ ultralytics
 numpy
 adafruit-circuitpython-tsl2591
 sounddevice
+adafruit-blinka
+rpi-lgpio
