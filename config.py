@@ -60,3 +60,21 @@ ACTIVITY_W_RATIO = 0.7  # activity_score = W_RATIO * changed fraction + W_MOTION
 ACTIVITY_W_MOTION = 0.3
 ACTIVITY_MOTION_SATURATION = 0.5  # mean normalized motion that counts as the maximum
 ACTIVITY_SMOOTHING_SECONDS = 5.0  # EMA time constant for activity_score
+
+# --- Local environment sensors (sensors/), both optional: a missing sensor never stops the CV ---
+LIGHT_ENABLED = True  # TSL2591 over I2C (GPIO2 SDA / GPIO3 SCL)
+LIGHT_INTERVAL_SECONDS = 1.0
+LIGHT_SMOOTHING_ALPHA = 1.0  # EMA weight of the newest lux sample; 1.0 = raw value
+
+NOISE_ENABLED = True  # INMP441 over I2S (see README / setup notes for the dtoverlay)
+NOISE_DEVICE = None  # sounddevice device name or index; None = system default input
+NOISE_SAMPLE_RATE = 48000
+NOISE_CHANNELS = 2  # the I2S card is stereo; INMP441 with L/R tied to GND sends on the left
+NOISE_CHANNEL_INDEX = 0  # 0 = left, 1 = right
+NOISE_WINDOW_SECONDS = 0.4  # raw samples live in memory only this long, then are discarded
+# ambient_noise_level = (dBFS - FLOOR) / (CEILING - FLOOR), clamped to 0..1. PLACEHOLDER values:
+# set FLOOR just above the quiet-room reading and CEILING near a hand clap (python -m sensors.calibrate).
+NOISE_FLOOR_DBFS = -70.0
+NOISE_CEILING_DBFS = -20.0
+NOISE_SMOOTHING_ALPHA = 0.5  # EMA weight of the newest window; short on purpose, spikes matter
+NOISE_STALE_SECONDS = 3.0  # a level older than this is reported as unavailable (None)

@@ -1,3 +1,5 @@
 # picamera2 and OpenCV come from apt (see setup.sh); not listed here on purpose.
 ultralytics
 numpy
+adafruit-circuitpython-tsl2591
+sounddevice

@@ -1,16 +1,21 @@
 """People counter: count visible people, classify posture, log aggregates periodically."""
 
 import argparse
+import logging
 import os
 import signal
 import time
 
 from dataclasses import replace
+from datetime import datetime
 
 import config
 from activity import ActivityEstimator, ActivityState
+from classroom_state import ClassroomState
 from logger import init_csv, log_state
 from overlay import draw_detections
+from sensors import open_light_sensor, open_noise_sensor
+from sensors.sampler import EnvironmentSampler
 from posture import (GeometryPostureClassifier, StandingRatioSmoother, classify_detections,
                      summarize_postures)
 
@@ -42,6 +47,14 @@ def draw_overlay(cv2, frame, detections, summary, activity, fps):
 WINDOW_NAME = "People counter"
 
 
+def print_readings(state):
+    lux = "n/a" if state.ambient_light_lux is None else f"{state.ambient_light_lux:.1f} lux"
+    noise = "n/a" if state.ambient_noise_level is None else f"level={state.ambient_noise_level:.2f}"
+    print(f"[CV] occupancy={state.occupancy} activity={state.activity_score:.2f}")
+    print(f"[LUX] {lux}")
+    print(f"[NOISE] {noise}")
+
+
 def toggle_fullscreen(cv2):
     current = cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN)
     target = cv2.WINDOW_NORMAL if current == cv2.WINDOW_FULLSCREEN else cv2.WINDOW_FULLSCREEN
@@ -70,6 +83,11 @@ def run(show_preview):
             cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     init_csv(config.CSV_PATH)
+    sampler = EnvironmentSampler(
+        open_light_sensor(config), open_noise_sensor(config),
+        light_interval=config.LIGHT_INTERVAL_SECONDS,
+        noise_stale_seconds=config.NOISE_STALE_SECONDS)
+    sampler.start()
     model = load_model()
     camera = start_camera()
     next_log = time.monotonic() + config.LOG_INTERVAL_SECONDS
@@ -105,8 +123,13 @@ def run(show_preview):
             last_tick = now
 
             if now >= next_log:
+                lux, noise = sampler.snapshot()
+                classroom = ClassroomState(datetime.now().astimezone(), summary["occupancy"],
+                                           activity.activity_score, lux, noise)
                 log_state(config.CSV_PATH, summary, smoothed,
-                          replace(activity, new_count=new_total, lost_count=lost_total))
+                          replace(activity, new_count=new_total, lost_count=lost_total),
+                          classroom=classroom)
+                print_readings(classroom)
                 new_total = lost_total = 0
                 next_log += config.LOG_INTERVAL_SECONDS
 
@@ -118,6 +141,7 @@ def run(show_preview):
                 elif key in (ord("q"), 27):
                     break
     finally:
+        sampler.stop()
         stop_camera(camera)
         cv2.destroyAllWindows()
         print("Stopped.")
@@ -139,6 +163,7 @@ def main():
     parser.add_argument("--out-dir", default=config.CAPTURE_DIR,
                         help=f"--save-frame: output folder (default {config.CAPTURE_DIR})")
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     if args.count < 1 or args.delay < 0 or args.interval < 0:
         parser.error("--count must be >= 1; --delay and --interval must be >= 0")
     signal.signal(signal.SIGTERM, _raise_stop)

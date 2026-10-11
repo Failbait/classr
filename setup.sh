@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 echo "==> Installing system packages (Picamera2, OpenCV)"
 sudo apt update
-sudo apt install -y python3-picamera2 python3-opencv python3-venv
+sudo apt install -y python3-picamera2 python3-opencv python3-venv libportaudio2 i2c-tools alsa-utils
 
 echo "==> Creating venv (with system site packages so Picamera2/OpenCV are visible)"
 python3 -m venv --system-site-packages .venv

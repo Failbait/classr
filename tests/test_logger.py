@@ -65,3 +65,23 @@ def test_row_contains_activity_aggregates(tmp_path):
     assert [row[k] for k in ("matched_count", "moving_count", "moving_ratio", "mean_motion",
                              "new_count", "lost_count", "activity_score")] \
         == ["17", "11", "0.647", "0.182", "2", "1", "0.710"]
+
+
+def test_row_contains_environment_columns(tmp_path):
+    from classroom_state import ClassroomState
+    path = tmp_path / "people_count.csv"
+    state = ClassroomState(datetime(2026, 10, 11, tzinfo=timezone.utc), 12, 0.18, 387.44, 0.2349)
+    log_state(path, summary(12), 0.0, IDLE, classroom=state)
+    row = dict(zip(HEADER, read_rows(path)[1]))
+    assert row["ambient_light_lux"] == "387.4" and row["ambient_noise_level"] == "0.235"
+
+
+def test_unavailable_sensors_are_blank(tmp_path):
+    from classroom_state import ClassroomState
+    path = tmp_path / "people_count.csv"
+    state = ClassroomState(datetime(2026, 10, 11, tzinfo=timezone.utc), 3, 0.0, None, None)
+    log_state(path, summary(3), 0.0, IDLE, classroom=state)
+    row = dict(zip(HEADER, read_rows(path)[1]))
+    assert row["ambient_light_lux"] == "" and row["ambient_noise_level"] == ""
+    log_state(path, summary(3), 0.0, IDLE)  # no state at all also yields blanks
+    assert read_rows(path)[2][-2:] == ["", ""]
