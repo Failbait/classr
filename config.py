@@ -4,7 +4,7 @@ CONFIDENCE_THRESHOLD = 0.3  # tuned for yolo26s on the benchmark sets
 LOG_INTERVAL_SECONDS = 5
 CSV_PATH = "data/people_count.csv"
 
-MODEL_NAME = "yolo26s.pt"  # or "rfdetr-small", another YOLO file, ...
+MODEL_NAME = "yolo26s_ncnn_model"  # NCNN export of yolo26s.pt at INFERENCE_IMAGE_SIZE (python export_ncnn.py); or "yolo26s.pt", "rfdetr-small"
 PERSON_CLASS_ID = 0  # COCO class 0 = person
 INFERENCE_IMAGE_SIZE = 1600  # YOLO: multiple of 32. Packed rows needed >= 1600 px (0 = RF-DETR native)
 

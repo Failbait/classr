@@ -8,6 +8,8 @@ Every backend returns raw candidates down to a low confidence floor; select_dete
 then applies the counting rules (confidence, small-box leniency, duplicate removal).
 """
 
+from pathlib import Path
+
 import config
 
 RFDETR_PREFIX = "rfdetr-"
@@ -18,6 +20,9 @@ def load_model():
     if config.MODEL_NAME.startswith(RFDETR_PREFIX):
         return _load_rfdetr(config.MODEL_NAME[len(RFDETR_PREFIX):])
     from ultralytics import YOLO
+    if config.MODEL_NAME.endswith("_ncnn_model") and not Path(config.MODEL_NAME).is_dir():
+        raise FileNotFoundError(
+            f"{config.MODEL_NAME}/ not found. Create it with: python export_ncnn.py")
     return YOLO(config.MODEL_NAME, task="detect")  # also loads exported *_ncnn_model folders
 
 

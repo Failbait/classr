@@ -3,3 +3,8 @@ filename,expected_count,scenario
 17sittingmixed.png,17,composite_mixed
 27sittingright.png,27,composite_right
 44sitting.png,44,composite_dense
+13sittingrandom.png,13,composite_random
+16sittingmixed.png,16,composite_mixed
+17sittingmixedrandom.png,17,composite_mixed_random
+5standing8sitting.png,13,composite_standing_mixed
+9standing.png,9,composite_standing

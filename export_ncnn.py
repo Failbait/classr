@@ -10,15 +10,24 @@ from pathlib import Path
 import config
 
 
+NCNN_SUFFIX = "_ncnn_model"
+
+
+def source_weights(model_name):
+    """yolo26s_ncnn_model -> yolo26s.pt; a .pt name is returned unchanged."""
+    return model_name[:-len(NCNN_SUFFIX)] + ".pt" if model_name.endswith(NCNN_SUFFIX) else model_name
+
+
 def main():
-    if config.MODEL_NAME.startswith("rfdetr-") or not config.MODEL_NAME.endswith(".pt"):
-        sys.exit(f"MODEL_NAME={config.MODEL_NAME!r} is not a YOLO .pt file; nothing to export.")
+    weights = source_weights(config.MODEL_NAME)
+    if config.MODEL_NAME.startswith("rfdetr-") or not weights.endswith(".pt"):
+        sys.exit(f"MODEL_NAME={config.MODEL_NAME!r} is not a YOLO model; nothing to export.")
     if config.INFERENCE_IMAGE_SIZE <= 0:
         sys.exit("Set INFERENCE_IMAGE_SIZE to a positive multiple of 32 before exporting.")
 
     from ultralytics import YOLO
 
-    exported = Path(YOLO(config.MODEL_NAME).export(
+    exported = Path(YOLO(weights).export(
         format="ncnn", imgsz=config.INFERENCE_IMAGE_SIZE))
     print(f"\nExported: {exported}")
     print(f'Set MODEL_NAME = "{exported.name}" in config.py (keep INFERENCE_IMAGE_SIZE = '

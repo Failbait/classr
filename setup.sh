@@ -18,7 +18,10 @@ pip install -r requirements-rfdetr.txt
 # Ultralytics pulls in pip OpenCV, which can shadow the system build. Prefer the apt one.
 pip uninstall -y opencv-python opencv-python-headless 2>/dev/null || true
 
-echo "==> Downloading the detector model from config.py (needs internet, one time)"
+echo "==> Preparing the detector model from config.py (needs internet, one time)"
+if python -c "import sys, config; sys.exit(0 if config.MODEL_NAME.endswith('_ncnn_model') else 1)"; then
+  python export_ncnn.py   # downloads the weights and converts them to NCNN
+fi
 python -c "import detector; detector.load_model()"
 
 echo "==> Checking imports"
