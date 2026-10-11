@@ -182,3 +182,4 @@ benchmark/results/
 *.pt
 captures/
 *_ncnn_model/
+benchmark_posture/results/
