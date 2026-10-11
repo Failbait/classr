@@ -6,7 +6,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from logger import HEADER, init_csv, log_state
+from activity import ActivityState
 from posture import Posture, summarize_postures
+
+
+IDLE = ActivityState(0, 0, 0, 0.0, 0.0, 0, 0, 0.0)
 
 
 def summary(n):
@@ -26,9 +30,9 @@ def test_creates_file_dir_and_header(tmp_path):
 
 def test_appends_and_never_overwrites(tmp_path):
     path = tmp_path / "people_count.csv"
-    log_state(path, summary(4), 0.0)
+    log_state(path, summary(4), 0.0, IDLE)
     init_csv(path)  # simulated restart
-    log_state(path, summary(5), 0.0)
+    log_state(path, summary(5), 0.0, IDLE)
     rows = read_rows(path)
     assert rows[0] == HEADER
     assert [r[1] for r in rows[1:]] == ["4", "5"]
@@ -36,7 +40,7 @@ def test_appends_and_never_overwrites(tmp_path):
 
 def test_timestamp_is_iso8601(tmp_path):
     path = tmp_path / "people_count.csv"
-    log_state(path, summary(1), 0.0, now=datetime(2026, 10, 6, 15, 30, tzinfo=timezone.utc))
+    log_state(path, summary(1), 0.0, IDLE, now=datetime(2026, 10, 6, 15, 30, tzinfo=timezone.utc))
     assert read_rows(path)[1][0] == "2026-10-06T15:30:00+00:00"
     datetime.fromisoformat(read_rows(path)[1][0])
 
@@ -44,8 +48,20 @@ def test_timestamp_is_iso8601(tmp_path):
 def test_row_contains_posture_aggregates(tmp_path):
     path = tmp_path / "people_count.csv"
     mixed = summarize_postures([Posture.SEATED] * 14 + [Posture.STANDING] * 3 + [Posture.UNKNOWN])
-    log_state(path, mixed, 0.1)
+    log_state(path, mixed, 0.1, IDLE)
     row = dict(zip(HEADER, read_rows(path)[1]))
     assert (row["people_count"], row["seated_count"], row["standing_count"],
             row["unknown_count"]) == ("18", "14", "3", "1")
     assert row["standing_ratio"] == "0.167" and row["standing_ratio_smoothed"] == "0.100"
+
+
+def test_row_contains_activity_aggregates(tmp_path):
+    path = tmp_path / "people_count.csv"
+    activity = ActivityState(
+        occupancy=18, matched_count=17, moving_count=11, moving_ratio=0.647, mean_motion=0.182,
+        new_count=2, lost_count=1, activity_score=0.71)
+    log_state(path, summary(18), 0.0, activity)
+    row = dict(zip(HEADER, read_rows(path)[1]))
+    assert [row[k] for k in ("matched_count", "moving_count", "moving_ratio", "mean_motion",
+                             "new_count", "lost_count", "activity_score")] \
+        == ["17", "11", "0.647", "0.182", "2", "1", "0.710"]

@@ -44,3 +44,19 @@ POSTURE_ZONES = [(0.40, 0.10, 0.16), (0.70, 0.20, 0.30), (1.00, 0.35, 0.50)]  # 
 POSTURE_EDGE_MARGIN_PX = 4  # box this close to the frame edge is truncated -> UNKNOWN
 POSTURE_MIN_ASPECT = 0.8  # height / width below this (very wide box) -> UNKNOWN
 POSTURE_SMOOTHING_WINDOW = 5  # median of the last N standing_ratio samples (aggregate only)
+
+# --- Activity (aggregate movement between detections), see activity.py ---
+# Motion is a box's centroid displacement divided by its previous size (max of width/height),
+# so far-away people are not under-counted. PLACEHOLDER thresholds: tune on real recordings.
+ACTIVITY_MOVING_THRESHOLD = 0.15  # normalized motion >= this = MOVING (detector jitter is ~0.03)
+ACTIVITY_MATCH_MAX_DISTANCE = 1.0  # max normalized centroid distance for a frame-to-frame match
+ACTIVITY_MATCH_MIN_IOU = 0.3  # ...or any pair overlapping at least this much
+ACTIVITY_MAX_GAP_SECONDS = 10.0  # forget the previous detections after this long (privacy, staleness)
+ACTIVITY_LOST_GRACE_SAMPLES = 1  # a box must be missing this many extra samples to count as lost
+ACTIVITY_SIZE_WEIGHT = 0.5  # box width/height change (e.g. standing up) counts this much as motion
+ACTIVITY_GLOBAL_SHIFT_MIN_MATCHES = 5  # need this many matches to estimate a camera shift
+ACTIVITY_GLOBAL_SHIFT_MAX = 0.1  # median shift above this is real crowd movement, not camera shake
+ACTIVITY_W_RATIO = 0.7  # activity_score = W_RATIO * changed fraction + W_MOTION * motion level
+ACTIVITY_W_MOTION = 0.3
+ACTIVITY_MOTION_SATURATION = 0.5  # mean normalized motion that counts as the maximum
+ACTIVITY_SMOOTHING_SECONDS = 5.0  # EMA time constant for activity_score

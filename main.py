@@ -5,7 +5,10 @@ import os
 import signal
 import time
 
+from dataclasses import replace
+
 import config
+from activity import ActivityEstimator, ActivityState
 from logger import init_csv, log_state
 from overlay import draw_detections
 from posture import (GeometryPostureClassifier, StandingRatioSmoother, classify_detections,
@@ -20,15 +23,18 @@ def _raise_stop(signum, frame):
     raise _Stop
 
 
-def draw_overlay(cv2, frame, detections, summary, fps):
+def draw_overlay(cv2, frame, detections, summary, activity, fps):
     annotated = draw_detections(cv2, frame, detections)
     lines = [f"People: {summary['occupancy']}", f"Seated: {summary['seated_count']}",
              f"Standing: {summary['standing_count']}", f"Unknown: {summary['unknown_count']}",
-             f"Standing ratio: {summary['standing_ratio']:.2f}"]
+             f"Standing ratio: {summary['standing_ratio']:.2f}",
+             f"Matched: {activity.matched_count}", f"Moving: {activity.moving_count}",
+             f"Moving ratio: {activity.moving_ratio:.2f}",
+             f"Activity: {activity.activity_score:.2f}"]
     for i, text in enumerate(lines):
-        cv2.putText(annotated, text, (20, 60 + i * 55), cv2.FONT_HERSHEY_SIMPLEX,
-                    1.6 if i == 0 else 1.1, (0, 0, 255), 3)
-    cv2.putText(annotated, f"{fps:.1f} FPS", (20, 60 + len(lines) * 55),
+        cv2.putText(annotated, text, (20, 60 + i * 48), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.6 if i == 0 else 1.0, (0, 0, 255), 3)
+    cv2.putText(annotated, f"{fps:.1f} FPS", (20, 60 + len(lines) * 48),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     return annotated
 
@@ -71,6 +77,9 @@ def run(show_preview):
     fps = 0.0
     classifier = GeometryPostureClassifier()
     smoother = StandingRatioSmoother()
+    estimator = ActivityEstimator()
+    activity = ActivityState(0, 0, 0, 0.0, 0.0, 0, 0, 0.0)
+    new_total = lost_total = 0  # summed over samples since the last log row
     smoothed = 0.0
     summary = summarize_postures([])
     people = []
@@ -87,17 +96,22 @@ def run(show_preview):
             people = classify_detections(classifier, frame, detect_people(model, frame))
             summary = summarize_postures(p["posture"] for p in people)
             smoothed = smoother.update(summary["standing_ratio"])
-
             now = time.monotonic()
+            activity = estimator.update(people, now)
+            new_total += activity.new_count
+            lost_total += activity.lost_count
+
             fps = 1.0 / max(now - last_tick, 1e-6)
             last_tick = now
 
             if now >= next_log:
-                log_state(config.CSV_PATH, summary, smoothed)
+                log_state(config.CSV_PATH, summary, smoothed,
+                          replace(activity, new_count=new_total, lost_count=lost_total))
+                new_total = lost_total = 0
                 next_log += config.LOG_INTERVAL_SECONDS
 
             if show_preview:
-                cv2.imshow(WINDOW_NAME, draw_overlay(cv2, frame, people, summary, fps))
+                cv2.imshow(WINDOW_NAME, draw_overlay(cv2, frame, people, summary, activity, fps))
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("f"):
                     toggle_fullscreen(cv2)

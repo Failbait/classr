@@ -36,6 +36,11 @@ Press `Ctrl+C` to stop; the camera and windows are released cleanly.
 timestamp,people_count,seated_count,standing_count,unknown_count,standing_ratio,standing_ratio_smoothed
 2026-10-11T14:32:05+02:00,18,14,3,1,0.167,0.158
 ```
+Activity columns come from `activity.py`: boxes in consecutive samples are matched one-to-one only to
+measure motion (normalized by box size); no IDs are kept and the previous boxes expire after 10 s.
+`new_count`/`lost_count` are summed over the samples since the last row. The `ACTIVITY_*` thresholds in
+`config.py` are placeholders until tuned on a real recording.
+
 Delete or move an old `data/people_count.csv` before the first run: it has the previous 2-column header.
 
 Posture (`posture.py`) is a perspective-aware box-geometry heuristic: the box bottom position picks a
