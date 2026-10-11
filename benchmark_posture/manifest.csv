@@ -1,0 +1,11 @@
+filename,expected_occupancy,expected_seated,expected_standing,expected_unknown
+../benchmark/images/05_seated.png,5,5,0,0
+../benchmark/images/09_seated.png,9,9,0,0
+../benchmark/images/15_seated.png,15,15,0,0
+../benchmark/images/18_seated.png,18,18,0,0
+../benchmark_composites/images/17sittingleft.png,17,17,0,0
+../benchmark_composites/images/27sittingright.png,27,27,0,0
+../benchmark_composites/images/44sitting.png,44,44,0,0
+../benchmark_composites/images/13sittingrandom.png,13,13,0,0
+../benchmark_composites/images/5standing8sitting.png,13,8,5,0
+../benchmark_composites/images/9standing.png,9,0,9,0

@@ -35,3 +35,12 @@ CAPTURE_RESOLUTION = (4608, 2592)
 START_FULLSCREEN = False  # press "f" in the preview to toggle at runtime
 
 CAPTURE_DIR = "captures"  # --save-frame output (git-ignored; contains images of people)
+
+# --- Posture (seated / standing / unknown), geometry heuristic in posture.py ---
+# Depth proxy = box bottom y / frame height. Each zone is (max_bottom_y, seated_max, standing_min),
+# the last two being box height / frame height: <= seated_max is SEATED, >= standing_min is
+# STANDING, in between is UNKNOWN. PLACEHOLDER values: calibrate on real frames of the mounted camera.
+POSTURE_ZONES = [(0.40, 0.10, 0.16), (0.70, 0.20, 0.30), (1.00, 0.35, 0.50)]  # far, middle, near
+POSTURE_EDGE_MARGIN_PX = 4  # box this close to the frame edge is truncated -> UNKNOWN
+POSTURE_MIN_ASPECT = 0.8  # height / width below this (very wide box) -> UNKNOWN
+POSTURE_SMOOTHING_WINDOW = 5  # median of the last N standing_ratio samples (aggregate only)

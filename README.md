@@ -2,7 +2,8 @@
 
 Counts the people visible to a Raspberry Pi camera and appends the aggregate
 count to a CSV every 5 seconds. Anonymous by design: **no images or video are
-saved, no per-person data or IDs are stored.** Only `timestamp,people_count`.
+saved, no per-person data or IDs are stored.** Only aggregate counts (people, seated,
+standing, unknown, standing ratio).
 
 ## Hardware
 Raspberry Pi 5, Raspberry Pi OS 64-bit (Desktop), Raspberry Pi Camera Module.
@@ -32,9 +33,16 @@ Press `Ctrl+C` to stop; the camera and windows are released cleanly.
 ## Output
 `data/people_count.csv`, ISO 8601 timestamps, appended across restarts:
 ```csv
-timestamp,people_count
-2026-10-06T15:30:00+02:00,4
+timestamp,people_count,seated_count,standing_count,unknown_count,standing_ratio,standing_ratio_smoothed
+2026-10-11T14:32:05+02:00,18,14,3,1,0.167,0.158
 ```
+Delete or move an old `data/people_count.csv` before the first run: it has the previous 2-column header.
+
+Posture (`posture.py`) is a perspective-aware box-geometry heuristic: the box bottom position picks a
+depth zone, the box height is compared with that zone's seated/standing thresholds, and anything in
+between, truncated by the frame edge or implausibly wide is `unknown`. `POSTURE_*` values in `config.py`
+are **placeholders until calibrated on real frames of the mounted camera**. Run the separate posture
+benchmark with `python posture_benchmark.py` (`benchmark_posture/manifest.csv`).
 
 ## Configuration (`config.py`)
 - `MODEL_NAME = "yolo26s_ncnn_model"` — NCNN export of yolo26s (`python export_ncnn.py`); `"yolo26s.pt"` or `"rfdetr-small"` also work

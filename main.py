@@ -1,4 +1,4 @@
-"""People counter MVP: count visible people and log the count periodically."""
+"""People counter: count visible people, classify posture, log aggregates periodically."""
 
 import argparse
 import os
@@ -6,8 +6,10 @@ import signal
 import time
 
 import config
-from logger import init_csv, log_count
+from logger import init_csv, log_state
 from overlay import draw_detections
+from posture import (GeometryPostureClassifier, StandingRatioSmoother, classify_detections,
+                     summarize_postures)
 
 
 class _Stop(Exception):
@@ -18,11 +20,15 @@ def _raise_stop(signum, frame):
     raise _Stop
 
 
-def draw_overlay(cv2, frame, detections, fps):
+def draw_overlay(cv2, frame, detections, summary, fps):
     annotated = draw_detections(cv2, frame, detections)
-    cv2.putText(annotated, f"People: {len(detections)}", (20, 60),
-                cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
-    cv2.putText(annotated, f"{fps:.1f} FPS", (20, 100),
+    lines = [f"People: {summary['occupancy']}", f"Seated: {summary['seated_count']}",
+             f"Standing: {summary['standing_count']}", f"Unknown: {summary['unknown_count']}",
+             f"Standing ratio: {summary['standing_ratio']:.2f}"]
+    for i, text in enumerate(lines):
+        cv2.putText(annotated, text, (20, 60 + i * 55), cv2.FONT_HERSHEY_SIMPLEX,
+                    1.6 if i == 0 else 1.1, (0, 0, 255), 3)
+    cv2.putText(annotated, f"{fps:.1f} FPS", (20, 60 + len(lines) * 55),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     return annotated
 
@@ -63,7 +69,11 @@ def run(show_preview):
     next_log = time.monotonic() + config.LOG_INTERVAL_SECONDS
     last_tick = time.monotonic()
     fps = 0.0
-    boxes = []
+    classifier = GeometryPostureClassifier()
+    smoother = StandingRatioSmoother()
+    smoothed = 0.0
+    summary = summarize_postures([])
+    people = []
     first_frame = True
     print(f"Running. Logging to {config.CSV_PATH} every "
           f"{config.LOG_INTERVAL_SECONDS}s. Ctrl+C to stop.")
@@ -74,18 +84,20 @@ def run(show_preview):
             if first_frame:
                 print(f"Camera frame: {frame.shape[1]}x{frame.shape[0]}")
                 first_frame = False
-            boxes = detect_people(model, frame)
+            people = classify_detections(classifier, frame, detect_people(model, frame))
+            summary = summarize_postures(p["posture"] for p in people)
+            smoothed = smoother.update(summary["standing_ratio"])
 
             now = time.monotonic()
             fps = 1.0 / max(now - last_tick, 1e-6)
             last_tick = now
 
             if now >= next_log:
-                log_count(config.CSV_PATH, len(boxes))
+                log_state(config.CSV_PATH, summary, smoothed)
                 next_log += config.LOG_INTERVAL_SECONDS
 
             if show_preview:
-                cv2.imshow(WINDOW_NAME, draw_overlay(cv2, frame, boxes, fps))
+                cv2.imshow(WINDOW_NAME, draw_overlay(cv2, frame, people, summary, fps))
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord("f"):
                     toggle_fullscreen(cv2)
