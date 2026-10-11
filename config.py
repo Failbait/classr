@@ -73,8 +73,8 @@ NOISE_CHANNELS = 2  # the I2S card is stereo; INMP441 with L/R tied to GND sends
 NOISE_CHANNEL_INDEX = 0  # 0 = left, 1 = right
 NOISE_WINDOW_SECONDS = 0.4  # raw samples live in memory only this long, then are discarded
 # ambient_noise_level = (dBFS - FLOOR) / (CEILING - FLOOR), clamped to 0..1. PLACEHOLDER values:
-# set FLOOR just above the quiet-room reading and CEILING near a hand clap (python -m sensors.calibrate).
-NOISE_FLOOR_DBFS = -70.0
+# measured with python -m sensors.calibrate: quiet room ~ -82, talking ~ -35..-25, loud ~ -21.
+NOISE_FLOOR_DBFS = -80.0
 NOISE_CEILING_DBFS = -20.0
 NOISE_SMOOTHING_ALPHA = 0.5  # EMA weight of the newest window; short on purpose, spikes matter
 NOISE_STALE_SECONDS = 3.0  # a level older than this is reported as unavailable (None)

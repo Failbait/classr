@@ -122,3 +122,49 @@ def test_sampler_survives_read_exceptions_and_reports_latest():
     lux, noise = sampler.snapshot()
     assert lux == 12.5
     assert noise == 0.4
+
+
+class CountingTsl:
+    """Records gain writes; lux comes from a scripted list."""
+
+    def __init__(self, lux_values):
+        self._values = list(lux_values)
+        self.gain_writes = []
+        self._gain = None
+
+    @property
+    def gain(self):
+        return self._gain
+
+    @gain.setter
+    def gain(self, value):
+        self.gain_writes.append(value)
+        self._gain = value
+
+    @property
+    def lux(self):
+        value = self._values.pop(0)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+
+def test_auto_gain_does_not_rewrite_gain_when_unchanged():
+    device = CountingTsl([100.0, 101.0, 99.0])
+    sensor = AutoGainLux(device, gains=(32, 16, 0), start_index=1)
+    for _ in range(3):
+        sensor.read_lux()
+    assert device.gain_writes == [16]  # written once, then left alone
+
+
+def test_auto_gain_negative_lux_is_rejected():
+    sensor = AutoGainLux(CountingTsl([-624.9]), gains=(32, 16, 0), start_index=1)
+    assert sensor.read_lux() is None
+
+
+def test_auto_gain_steps_up_when_dim_and_down_on_saturation():
+    device = CountingTsl([0.8, 40.0, RuntimeError("Overflow"), 900.0])
+    sensor = AutoGainLux(device, gains=(32, 16, 0), start_index=1)
+    sensor.read_lux()  # dim at MED -> next read should use the more sensitive gain
+    assert sensor.read_lux() == 40.0 and device.gain_writes == [16, 32]
+    assert sensor.read_lux() == 900.0 and device.gain_writes == [16, 32, 16]
