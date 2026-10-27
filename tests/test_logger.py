@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from logger import HEADER, init_csv, log_state
+from logger import HEADER, build_header, init_csv, log_state
 from activity import ActivityState
 from posture import Posture, summarize_postures
 
@@ -85,3 +85,71 @@ def test_unavailable_sensors_are_blank(tmp_path):
     assert row["ambient_light_lux"] == "" and row["ambient_noise_level"] == ""
     log_state(path, summary(3), 0.0, IDLE)  # no state at all also yields blanks
     assert read_rows(path)[2][-2:] == ["", ""]
+
+
+LABELS = ("s1", "s2")
+ENV_HEADER = build_header(LABELS)
+
+
+class Reading:
+    def __init__(self, co2_ppm, temperature_c, humidity_percent):
+        self.co2_ppm, self.temperature_c, self.humidity_percent = \
+            co2_ppm, temperature_c, humidity_percent
+
+
+def env_state(environment):
+    from classroom_state import ClassroomState
+    return ClassroomState(datetime(2026, 10, 12, tzinfo=timezone.utc), 12, 0.18, 387.4, 0.23,
+                          environment=environment)
+
+
+def test_header_has_three_columns_per_labelled_node():
+    assert ENV_HEADER[:len(HEADER)] == HEADER
+    assert ENV_HEADER[len(HEADER):] == [
+        "co2_ppm_s1", "temperature_c_s1", "humidity_percent_s1",
+        "co2_ppm_s2", "temperature_c_s2", "humidity_percent_s2"]
+
+
+def test_row_contains_each_nodes_environment_columns(tmp_path):
+    path = tmp_path / "people_count.csv"
+    state = env_state({"s1": Reading(812, 22.47, 39.81), "s2": Reading(1200, 23.5, 55.0)})
+    log_state(path, summary(12), 0.0, IDLE, classroom=state, env_labels=LABELS)
+    row = dict(zip(ENV_HEADER, read_rows(path)[1]))
+    assert (row["co2_ppm_s1"], row["temperature_c_s1"], row["humidity_percent_s1"]) \
+        == ("812", "22.47", "39.81")
+    assert (row["co2_ppm_s2"], row["temperature_c_s2"], row["humidity_percent_s2"]) \
+        == ("1200", "23.50", "55.00")
+
+
+def test_one_missing_node_leaves_only_its_columns_blank(tmp_path):
+    path = tmp_path / "people_count.csv"
+    state = env_state({"s1": Reading(812, 22.47, 39.81), "s2": None})
+    log_state(path, summary(12), 0.0, IDLE, classroom=state, env_labels=LABELS)
+    row = dict(zip(ENV_HEADER, read_rows(path)[1]))
+    assert row["co2_ppm_s1"] == "812"
+    assert [row[c] for c in ENV_HEADER[-3:]] == ["", "", ""]
+
+
+def test_no_environment_at_all_leaves_every_node_column_blank(tmp_path):
+    path = tmp_path / "people_count.csv"
+    log_state(path, summary(3), 0.0, IDLE, classroom=env_state({}), env_labels=LABELS)
+    log_state(path, summary(3), 0.0, IDLE, env_labels=LABELS)  # no state object either
+    rows = read_rows(path)
+    assert rows[1][-6:] == [""] * 6 and rows[2][-6:] == [""] * 6
+
+
+def test_header_change_when_a_node_is_added_rotates_the_old_file(tmp_path):
+    path = tmp_path / "people_count.csv"
+    init_csv(path, env_labels=("s1",))
+    init_csv(path, env_labels=LABELS)
+    assert read_rows(path) == [ENV_HEADER]
+    assert len(list(tmp_path.glob("people_count.csv.old-*"))) == 1
+
+
+def test_old_header_file_is_rotated_not_corrupted(tmp_path):
+    path = tmp_path / "people_count.csv"
+    path.write_text("timestamp,people_count\n2026-10-11T00:00:00+00:00,4\n")
+    init_csv(path)
+    assert read_rows(path) == [HEADER]
+    backups = list(tmp_path.glob("people_count.csv.old-*"))
+    assert len(backups) == 1 and "2026-10-11" in backups[0].read_text()

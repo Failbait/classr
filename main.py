@@ -14,7 +14,7 @@ from activity import ActivityEstimator, ActivityState
 from classroom_state import ClassroomState
 from logger import init_csv, log_state
 from overlay import draw_detections
-from sensors import open_light_sensor, open_noise_sensor
+from sensors import open_environment_client, open_light_sensor, open_noise_sensor
 from sensors.sampler import EnvironmentSampler
 from posture import (GeometryPostureClassifier, StandingRatioSmoother, classify_detections,
                      summarize_postures)
@@ -53,6 +53,12 @@ def print_readings(state):
     print(f"[CV] occupancy={state.occupancy} activity={state.activity_score:.2f}")
     print(f"[LUX] {lux}")
     print(f"[NOISE] {noise}")
+    for label, env in state.environment.items():
+        if env is None:
+            print(f"[ENV {label}] n/a")
+        else:
+            print(f"[ENV {label}] CO2={env.co2_ppm} ppm temp={env.temperature_c:.2f} C "
+                  f"humidity={env.humidity_percent:.2f} %")
 
 
 def toggle_fullscreen(cv2):
@@ -82,12 +88,15 @@ def run(show_preview):
         if config.START_FULLSCREEN:
             cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    init_csv(config.CSV_PATH)
+    # Column layout follows the config, not what is reachable, so a node that is down just logs blanks.
+    env_labels = tuple(config.ENV_NODES) if config.ENV_BLE_ENABLED else ()
+    init_csv(config.CSV_PATH, env_labels)
     sampler = EnvironmentSampler(
         open_light_sensor(config), open_noise_sensor(config),
         light_interval=config.LIGHT_INTERVAL_SECONDS,
         noise_stale_seconds=config.NOISE_STALE_SECONDS)
     sampler.start()
+    env_node = open_environment_client(config)
     model = load_model()
     camera = start_camera()
     next_log = time.monotonic() + config.LOG_INTERVAL_SECONDS
@@ -124,11 +133,12 @@ def run(show_preview):
 
             if now >= next_log:
                 lux, noise = sampler.snapshot()
-                classroom = ClassroomState(datetime.now().astimezone(), summary["occupancy"],
-                                           activity.activity_score, lux, noise)
+                classroom = ClassroomState(
+                    datetime.now().astimezone(), summary["occupancy"], activity.activity_score,
+                    lux, noise, env_node.snapshot() if env_node else {})
                 log_state(config.CSV_PATH, summary, smoothed,
                           replace(activity, new_count=new_total, lost_count=lost_total),
-                          classroom=classroom)
+                          classroom=classroom, env_labels=env_labels)
                 print_readings(classroom)
                 new_total = lost_total = 0
                 next_log += config.LOG_INTERVAL_SECONDS
@@ -141,6 +151,8 @@ def run(show_preview):
                 elif key in (ord("q"), 27):
                     break
     finally:
+        if env_node:
+            env_node.stop()
         sampler.stop()
         stop_camera(camera)
         cv2.destroyAllWindows()

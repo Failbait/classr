@@ -78,3 +78,18 @@ NOISE_FLOOR_DBFS = -80.0
 NOISE_CEILING_DBFS = -20.0
 NOISE_SMOOTHING_ALPHA = 0.5  # EMA weight of the newest window; short on purpose, spikes matter
 NOISE_STALE_SECONDS = 3.0  # a level older than this is reported as unavailable (None)
+
+# --- BLE environmental node (STM32WB55 + SCD30), see sensors/ble_environment.py ---
+ENV_BLE_ENABLED = True
+# label -> advertised BLE name. Discovery is by name (the nodes share one service UUID, and the
+# UUID does not fit in the advertisement). The label becomes the CSV column suffix, e.g. co2_ppm_s1.
+# Each board's name is APPBLE_NODE_NAME in firmware/.../BLE_EnvNode/STM32_WPAN/App/app_ble.c.
+ENV_NODES = {"s1": "classr-s1", "s2": "classr-s2"}
+# Must match STM32_WPAN/App/envs.c. Service 0000a000-..., base 0000xxxx-4A34-4B2A-9D0C-53574F495430. Each characteristic is
+# READ + NOTIFY, 2 bytes little-endian: CO2 u16 ppm, temperature i16 degC*100, humidity u16 %RH*100.
+ENV_CO2_UUID = "0000a001-4a34-4b2a-9d0c-53574f495430"
+ENV_TEMPERATURE_UUID = "0000a002-4a34-4b2a-9d0c-53574f495430"
+ENV_HUMIDITY_UUID = "0000a003-4a34-4b2a-9d0c-53574f495430"
+ENV_SCAN_SECONDS = 8.0
+ENV_RETRY_SECONDS = 5.0  # fixed delay between (re)connection attempts, no backoff
+ENV_STALE_SECONDS = 15.0  # a field not refreshed for this long (node samples every 2 s) = unavailable

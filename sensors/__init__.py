@@ -36,3 +36,22 @@ def open_noise_sensor(config) -> NoiseSensor | None:
     except Exception as exc:
         log.error("Microphone unavailable: %s", exc)
         return None
+
+
+def open_environment_client(config):
+    """Return a started BLE environmental hub (all configured nodes), or None (logged) if disabled or unavailable.
+
+    The client retries forever in the background, so a missing node is not an error here."""
+    if not config.ENV_BLE_ENABLED:
+        return None
+    try:
+        from sensors.ble_environment import BleEnvironmentHub
+        hub = BleEnvironmentHub(
+            config.ENV_NODES,
+            (config.ENV_CO2_UUID, config.ENV_TEMPERATURE_UUID, config.ENV_HUMIDITY_UUID),
+            config.ENV_RETRY_SECONDS, config.ENV_STALE_SECONDS, config.ENV_SCAN_SECONDS)
+        hub.start()
+        return hub
+    except Exception as exc:  # e.g. bleak not installed
+        log.error("BLE environment client unavailable: %s", exc)
+        return None
