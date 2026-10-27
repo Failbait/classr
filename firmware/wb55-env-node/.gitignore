@@ -1,0 +1,8 @@
+# CubeIDE build output and per-user settings
+Debug/
+Release/
+.settings/
+.DS_Store
+
+# repo-level .gitignore ignores target/ (Python); STM32_WPAN/Target holds hw_ipcc.c, which the build needs
+!Target/
